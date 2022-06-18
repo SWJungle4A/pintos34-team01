@@ -26,6 +26,8 @@ void exit(int status);
 bool create(const char *file, unsigned initial_size);
 bool remove(const char *file);
 int open(const char *file);
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
 int filesize(int fd);
 int read(int fd, void *buffer, unsigned size);
 int write(int fd, const void *buffer, unsigned size);
@@ -102,6 +104,12 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_WAIT:
 		f->R.rax = process_wait(f->R.rdi);
 		break;
+	case SYS_MMAP:
+      f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+      break;
+   case SYS_MUNMAP:
+      munmap(f->R.rdi);
+      break;
 	case SYS_CREATE:
 		// rdi : argc,	rsi : argv
 		f->R.rax = create(f->R.rdi, f->R.rsi);
@@ -394,6 +402,25 @@ int read(int fd, void *buffer, unsigned size)
 		lock_release(&file_rw_lock);
 	}
 	return ret;
+}
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
+   
+   if (addr == NULL || !(is_user_vaddr(addr)) || (long)length <= 0 || fd < 2 
+      || addr != pg_round_down(addr) || offset % PGSIZE != 0){ 
+      return NULL;
+   }
+
+   struct file *file = find_file_by_fd(fd);
+
+   return do_mmap(addr, length, writable, file, offset);
+}
+
+void munmap (void *addr){
+	// if (addr == NULL || !(is_user_vaddr(addr))){
+	// 	return NULL;
+	// }
+	do_munmap(addr);
 }
 
 void close(int fd)

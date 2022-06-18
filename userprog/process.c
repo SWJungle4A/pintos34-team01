@@ -824,25 +824,38 @@ install_page(void *upage, void *kpage, bool writable)
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-static bool
+bool
 lazy_load_segment(struct page *page, void *aux)
 {
-	/* TODO: Load the segment from the file */
-	/* TODO: This called when the first page fault occurs on address VA. */
-	/* TODO: VA is available when calling this function. */
-	struct aux_data* aux_dt = aux;
-	struct file* f = aux_dt->file;
-	file_seek(f, aux_dt->ofs);
+    /* TODO: Load the segment from the file */
+    /* TODO: This called when the first page fault occurs on address VA. */
+    /* TODO: VA is available when calling this function. */
+    struct aux_data* aux_dt = aux;
+    struct file* f = aux_dt->file;
+    file_seek(f, aux_dt->ofs);
 
-	if (file_read(f, page->frame->kva, aux_dt->read_bytes) != (int)aux_dt->read_bytes){
-		palloc_free_page(page->frame->kva);
-		return false;
+    if (VM_TYPE(page->operations->type) == VM_FILE){
+        page->file.cnt = aux_dt->cnt;
+        page->file.file = aux_dt->file;
+        page->file.read_bytes = aux_dt->read_bytes;
+        page->file.zero_bytes = aux_dt->zero_bytes;
+		page->file.ofs = aux_dt->ofs;
+    }
+
+	if (VM_TYPE(page->operations->type) == VM_FILE){
+		file_read(f, page->frame->kva, aux_dt->read_bytes);
+	} else {
+		if (file_read(f, page->frame->kva, aux_dt->read_bytes) != (int)aux_dt->read_bytes){
+		printf("\n\nentered lazy_load_segment\n\n");
+        palloc_free_page(page->frame->kva);
+        return false;
+    	}
 	}
 
-	memset(page->frame->kva + aux_dt->read_bytes, 0, aux_dt->zero_bytes);
-	free(aux_dt);
+    memset(page->frame->kva + aux_dt->read_bytes, 0, aux_dt->zero_bytes);
+    free(aux_dt);
 
-	return true;
+    return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
