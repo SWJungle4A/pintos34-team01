@@ -128,6 +128,8 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 static struct frame *
 vm_get_victim(void)
 {
+	// printf("\nvm_get_victim() entry\n");
+
 	lock_acquire(&frame_lock);
 	struct frame *victim = NULL;
 	/* TODO: The policy for eviction is up to you. */
@@ -153,9 +155,11 @@ vm_get_victim(void)
 		
 	}
 	if (victim == NULL){
-		victim = list_pop_front(&frame_list);
+		victim = list_entry(list_pop_front(&frame_list), struct frame, frame_elem);
+		
 	}
 	lock_release(&frame_lock);
+	// printf("\nvm_get_victim() end %p\n", victim);
 	return victim;
 }
 
@@ -164,13 +168,15 @@ vm_get_victim(void)
 static struct frame *
 vm_evict_frame(void)
 {
+	// printf("\nvm_evict_frame() entry\n");
 	struct frame *victim UNUSED = vm_get_victim();
 	/* TODO: swap out the victim and return the evicted frame. */
 	if (swap_out(victim->page)){
 		// 호출한 곳에서 pml4_clear 혹은 프레임리스트에서 제거 등을 수행?
+		// printf("\nvm_evict_frame() %p end\n", victim);
 		return victim;
 	}
-
+	// printf("\nvm_evict_frame() fail\n");
 	return NULL;
 }
 
@@ -192,13 +198,16 @@ vm_get_frame(void)
 
 	if (kva == NULL)
 	{
+		// printf("\nvm_get_frame() handling entry\n");
 		struct frame* evict_frame = vm_evict_frame();
 		if(evict_frame){
 			kva = palloc_get_page(PAL_USER);
 			free(evict_frame);
+			// printf("\nvm_get_frame() handling end \n");
 		}else{
-			PANIC("vm_evict_frame() = NULL");
+			// PANIC("vm_evict_frame() = NULL");
 		}
+		
 	}
 
 	frame->thread = thread_current();
@@ -254,7 +263,7 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 				return true;
 			}
 			return false;
-		}		
+		}	
 		return vm_do_claim_page(page);
 	}
 	return false;
@@ -295,7 +304,7 @@ vm_do_claim_page(struct page *page)
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	struct thread *cur = thread_current();
 
-	if (pml4_get_page(cur->pml4, page->va) || pml4_set_page(cur->pml4, page->va, frame->kva, page->writable))
+	if (!pml4_get_page(cur->pml4, page->va) && pml4_set_page(cur->pml4, page->va, frame->kva, page->writable))
 	{
 		return swap_in(page, frame->kva);
 	}

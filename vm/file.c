@@ -42,12 +42,15 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the file. */
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
+    // printf("\n-----------file_swap_in_entry------------\n");
 	struct file_page *file_page UNUSED = &page->file;
     
-    if (!file_read(file_page->file, kva, file_page->read_bytes)){
+    if (!file_read_at(file_page->file, kva, file_page->read_bytes, file_page->ofs)){
         return false;
     }
     memset(kva + file_page->read_bytes, 0, file_page->zero_bytes);
+
+    // printf("\n-----------file_swap_out_entry------------\n");
 
     return true;
 }
@@ -55,6 +58,8 @@ file_backed_swap_in (struct page *page, void *kva) {
 /* Swap out the page by writeback contents to the file. */
 static bool
 file_backed_swap_out (struct page *page) {
+    // printf("\n-----------file_swap_out_entry------------\n");
+
 	struct file_page *file_page UNUSED = &page->file;
     struct thread *t = page->frame->thread;
 
@@ -62,11 +67,12 @@ file_backed_swap_out (struct page *page) {
         file_write_at(file_page->file, page->frame->kva, page->file.read_bytes, page->file.ofs);
         pml4_set_dirty(t->pml4, page->va, false);
     }
-
+    // printf("\n-----------file_swap_out_mid------------\n");
     palloc_free_page(page->frame->kva);
     pml4_clear_page(t->pml4, page->va);
     page->frame = NULL;
 
+    // printf("\n-----------file_swap_out_end------------\n");
     return true;
 }
 
