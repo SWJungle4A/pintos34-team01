@@ -8,7 +8,7 @@
 #include <string.h>
 #include "include/userprog/process.h"
 
-// struct frame_table *frame_table;
+static struct list frame_table;
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -22,8 +22,7 @@ void vm_init(void)
 	register_inspect_intr();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
-	// frame_table = (struct frame_table*)calloc(1, sizeof(struct frame_table));
-	// list_init(&frame_table->frame_list);
+	list_init(&frame_table);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -132,7 +131,13 @@ vm_get_victim(void)
 {
 	struct frame *victim = NULL;
 	/* TODO: The policy for eviction is up to you. */
+	// is_acessed, is_dirty
 
+	// TODO :  프레임 테이블을 돌면서 eviction을 수행할 프레임을 찾기
+	/*  제거할 프레임(LRU, FIFO 또는 ...)을 선택합니다.
+		페이지 테이블의 "액세스" 및 "더티" 비트가 유용합니다.
+		페이지 테이블에서 프레임에 대한 참조를 제거합니다(공유 시 주의).!!
+		필요한 경우 파일 시스템 또는 스왑할 페이지를 작성합니다. */
 	return victim;
 }
 
@@ -143,6 +148,8 @@ vm_evict_frame(void)
 {
 	struct frame *victim UNUSED = vm_get_victim();
 	/* TODO: swap out the victim and return the evicted frame. */
+	// 페이지 종류별로 형태에 맞는 swap out 진행
+	
 
 	return NULL;
 }
@@ -165,12 +172,15 @@ vm_get_frame(void)
 
 	if (kva == NULL)
 	{
+		
 		PANIC("todo");
 	}
 
+	
+
 	frame->kva = kva;
 
-	// list_push_back(&frame_table.frame_list, &frame->frame_elem);
+	list_push_back(&frame_table, &frame->frame_elem);
 	return frame;
 }
 
@@ -214,14 +224,11 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 
 			if (USER_STACK>addr && addr>=rsp-8 && addr >= USER_STACK - (1<<20))
 			{
-				// printf("\n-------stack growth entry---------\n");
 				vm_stack_growth(pg_round_down(addr));
-				// printf("\n-------stack growth return---------\n");
 				return true;
 			}
 			return false;
 		}
-		// printf("\nwrite, writable:%d, %d", write, page->writable);
 		
 		return vm_do_claim_page(page);
 	}
@@ -324,9 +331,22 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
 {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
-
-	// pml4 is dirty / set dirty  활용?
+	// struct hash_iterator i;
+	// hash_first(&i, &spt->pages);
+	// while (hash_next(&i)){
+	// 	struct page *p = hash_entry(hash_cur(&i), struct page, hash_elem);
+	// 	if (p == NULL){
+	// 		return NULL;
+	// 	}
+	// 	if (VM_TYPE(p->operations->type) == VM_FILE){
+	// 		// printf("------IS VMFILE------\n");
+	// 		do_munmap(p->va);
+	// 	}
+	// 	destroy(p);
+	// 	hash_destroy(&spt->pages, page_destructor);
+	// }
 	hash_destroy(&spt->pages, page_destructor);
+
 }
 
 /* Returns a hash value for page p. */

@@ -5,7 +5,7 @@
 #include "threads/thread.h"
 #include "threads/loader.h"
 #include "userprog/gdt.h"
-#include "threads/flags.h"
+#include "include/threads/flags.h"
 #include "intrinsic.h"
 
 #include "filesys/filesys.h"
@@ -36,6 +36,7 @@ void close(int fd);
 tid_t fork(const char *thread_name, struct intr_frame *f);
 int exec(char *file_name);
 int dup2(int oldfd, int newfd);
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 
 /* syscall helper functions */
 void check_address(const uint64_t *uaddr);
@@ -84,58 +85,71 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	// printf("syscall! , %d\n",f->R.rax);
 	struct thread*t = thread_current();
 	t->rsp = f->rsp;
-	switch (f->R.rax)
-	{
-	case SYS_HALT:
-		halt();
-		break;
-	case SYS_EXIT:
-		exit(f->R.rdi);
-		break;
-	case SYS_FORK:
-		f->R.rax = fork(f->R.rdi, f);
-		break;
-	case SYS_EXEC:
-		if (exec(f->R.rdi) == -1)
+
+		/* 인자가 들어오는 순서 : 
+		   1번째 인자 : %rdi
+		   2번째 인자 : %rsi
+		   3번째 인자 : %rdx
+		   4번째 인자 : %r10
+		   5번째 인자 : %r8
+		   6번째 인자 : %r9 */
+	switch (f->R.rax) {
+		case SYS_HALT:
+			halt();
+			break;
+		case SYS_EXIT:
+			exit(f->R.rdi);
+			break;
+		case SYS_FORK:
+			f->R.rax = fork(f->R.rdi, f);
+			break;
+		case SYS_EXEC:
+			if (exec(f->R.rdi) == -1)
+				exit(-1);
+			break;
+		case SYS_WAIT:
+			f->R.rax = process_wait(f->R.rdi);
+			break;
+		case SYS_CREATE:
+			// rdi : argc,	rsi : argv
+			f->R.rax = create(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_REMOVE:
+			f->R.rax = remove(f->R.rdi);
+			break;
+		case SYS_OPEN:
+			f->R.rax = open(f->R.rdi);
+			break;
+		case SYS_FILESIZE:
+			f->R.rax = filesize(f->R.rdi);
+			break;
+		case SYS_READ:
+			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_WRITE:
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_SEEK:
+			seek(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_TELL:
+			f->R.rax = tell(f->R.rdi);
+			break;
+		case SYS_CLOSE:
+			close(f->R.rdi);
+			break;
+		case SYS_MMAP:
+			f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+			break;
+		case SYS_MUNMAP:
+			munmap(f->R.rdi);
+			break;
+		case SYS_DUP2:
+			f->R.rax = dup2(f->R.rdi, f->R.rsi);
+			break;
+		default:
 			exit(-1);
-		break;
-	case SYS_WAIT:
-		f->R.rax = process_wait(f->R.rdi);
-		break;
-	case SYS_CREATE:
-		// rdi : argc,	rsi : argv
-		f->R.rax = create(f->R.rdi, f->R.rsi);
-		break;
-	case SYS_REMOVE:
-		f->R.rax = remove(f->R.rdi);
-		break;
-	case SYS_OPEN:
-		f->R.rax = open(f->R.rdi);
-		break;
-	case SYS_FILESIZE:
-		f->R.rax = filesize(f->R.rdi);
-		break;
-	case SYS_READ:
-		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
-		break;
-	case SYS_WRITE:
-		f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
-		break;
-	case SYS_SEEK:
-		seek(f->R.rdi, f->R.rsi);
-		break;
-	case SYS_TELL:
-		f->R.rax = tell(f->R.rdi);
-		break;
-	case SYS_CLOSE:
-		close(f->R.rdi);
-		break;
-	case SYS_DUP2:
-		f->R.rax = dup2(f->R.rdi, f->R.rsi);
-		break;
-	default:
-		exit(-1);
-		break;
+			break;
 	}
 }
 /* ------------------- helper function -------------------- */
@@ -497,4 +511,39 @@ int dup2(int oldfd, int newfd)
 	close(newfd);
 	fdt[newfd] = fileobj;
 	return newfd;
+}
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset)
+{
+
+   /* 파일의 시작점이 페이지 정렬이 되지 않았을 경우  */
+	if (offset%PGSIZE != 0){
+		return NULL;
+	}
+
+	/* check address */
+	if (addr == NULL || !(is_user_vaddr(addr)) || addr != pg_round_down(addr)) {
+		return NULL;
+   	}
+	/* fd가 표준 입출력일 경우 */
+	if (fd < 2){
+		return NULL;
+	}
+
+	struct file *file = find_file_by_fd(fd);
+	
+	/* file이 제대로 열리지 않았을 경우, file의 길이가 0인 경우 */
+	if (file == NULL || file_length(file) == 0){
+		return NULL;
+	}
+	/* addr가 0인 경우, length가 0인 경우 */
+	if (addr == 0x0 || (long)length <= 0){
+		return NULL;
+	}
+   return do_mmap(addr, length, writable, file, offset);
+}
+
+void munmap (void *addr)
+{
+   return do_munmap(addr);
 }
