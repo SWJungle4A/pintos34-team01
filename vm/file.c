@@ -87,11 +87,12 @@ file_backed_destroy (struct page *page) {
             pml4_set_dirty(t->pml4, page->va, false);
     }
 
-    lock_acquire(&frame_lock);
-    list_remove(&page->frame->frame_elem);
-    lock_release(&frame_lock);
-
-    free(page->frame);
+    if (page->frame != NULL){
+        lock_acquire(&frame_lock);
+        list_remove(&page->frame->frame_elem);
+        lock_release(&frame_lock);
+		free(page->frame);
+	}
 }
 
 /* Do the mmap */

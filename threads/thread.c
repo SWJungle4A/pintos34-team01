@@ -799,7 +799,7 @@ void test_max_priority(void)
 	int curr_pri = thread_get_priority();
 	struct thread *ready_thread = list_entry(list_begin(&ready_list), struct thread, elem);
 
-	if (curr_pri < ready_thread->priority)
+	if (curr_pri < ready_thread->priority && !intr_context())
 	{
 		thread_yield();
 	}

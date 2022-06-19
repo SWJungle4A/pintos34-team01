@@ -101,11 +101,12 @@ anon_swap_out (struct page *page) {
 static void
 anon_destroy (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
-
-	lock_acquire(&frame_lock);
-    list_remove(&page->frame->frame_elem);
-    lock_release(&frame_lock);
-
-	free(page->frame);
+	if (page->frame != NULL){
+		lock_acquire(&frame_lock);
+		list_remove(&page->frame->frame_elem);
+		lock_release(&frame_lock);
+		
+		free(page->frame);
+	}
 	return;
 }
