@@ -417,9 +417,6 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
 }
 
 void munmap (void *addr){
-	// if (addr == NULL || !(is_user_vaddr(addr))){
-	// 	return NULL;
-	// }
 	do_munmap(addr);
 }
 

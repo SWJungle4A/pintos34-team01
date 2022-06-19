@@ -33,6 +33,7 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
     file_page->file = NULL;
     file_page->read_bytes = 0;
     file_page->zero_bytes = 0;
+    file_page->ofs = 0;
 
     return true;
 }
@@ -42,12 +43,31 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
+    
+    if (!file_read(file_page->file, kva, file_page->read_bytes)){
+        return false;
+    }
+    memset(kva + file_page->read_bytes, 0, file_page->zero_bytes);
+
+    return true;
 }
 
 /* Swap out the page by writeback contents to the file. */
 static bool
 file_backed_swap_out (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
+    struct thread *t = page->frame->thread;
+
+    if (pml4_is_dirty(t->pml4, page->va)){
+        file_write_at(file_page->file, page->frame->kva, page->file.read_bytes, page->file.ofs);
+        pml4_set_dirty(t->pml4, page->va, false);
+    }
+
+    palloc_free_page(page->frame->kva);
+    pml4_clear_page(t->pml4, page->va);
+    page->frame = NULL;
+
+    return true;
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
@@ -58,7 +78,13 @@ file_backed_destroy (struct page *page) {
 
     if (pml4_is_dirty(t->pml4, page->va)){
 			file_write_at(file_page->file, page->frame->kva, page->file.read_bytes, page->file.ofs);
+            pml4_set_dirty(t->pml4, page->va, false);
     }
+
+    lock_acquire(&frame_lock);
+    list_remove(&page->frame->frame_elem);
+    lock_release(&frame_lock);
+
     free(page->frame);
 }
 
@@ -77,7 +103,7 @@ do_mmap (void *addr, size_t length, int writable,
         }
     }
 
-    uint64_t origin_addr = addr;
+    void* origin_addr = addr;
 
     for (int i = 0; i < cnt; i++){
 
@@ -128,10 +154,11 @@ do_munmap (void *addr) {
 
 		if (pml4_is_dirty(t->pml4, p->va)){
 			file_write_at(file, p->frame->kva, p->file.read_bytes, p->file.ofs);
+            pml4_set_dirty(t->pml4, page->va, false);
 		}
 
 		hash_delete(&t->spt.pages, &p->hash_elem);
-		free(p);
+		// free(p);
 	}
 
 }

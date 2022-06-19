@@ -840,13 +840,9 @@ lazy_load_segment(struct page *page, void *aux)
         page->file.read_bytes = aux_dt->read_bytes;
         page->file.zero_bytes = aux_dt->zero_bytes;
 		page->file.ofs = aux_dt->ofs;
-    }
-
-	if (VM_TYPE(page->operations->type) == VM_FILE){
 		file_read(f, page->frame->kva, aux_dt->read_bytes);
-	} else {
+    }else {
 		if (file_read(f, page->frame->kva, aux_dt->read_bytes) != (int)aux_dt->read_bytes){
-		printf("\n\nentered lazy_load_segment\n\n");
         palloc_free_page(page->frame->kva);
         return false;
     	}

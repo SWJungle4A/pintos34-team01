@@ -35,6 +35,9 @@ enum vm_type {
 struct page_operations;
 struct thread;
 
+struct list frame_list;
+struct lock frame_lock;
+
 #define VM_TYPE(type) ((type) & 7)
 
 /* The representation of "page".
@@ -65,6 +68,7 @@ struct frame {
 	void *kva;
 	struct page *page;
 	struct list_elem frame_elem;
+	struct thread *thread;
 };
 
 /* The function table for page operations.
@@ -88,10 +92,6 @@ struct page_operations {
  * All designs up to you for this. */
 struct supplemental_page_table {
 	struct hash pages;
-};
-
-struct frame_table{
-	struct list frame_list;
 };
 
 #include "threads/thread.h"
