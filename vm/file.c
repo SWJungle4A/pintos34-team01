@@ -144,7 +144,6 @@ do_mmap (void *addr, size_t length, int writable,
 /* Do the munmap */
 void
 do_munmap (void *addr) {
-
 	// spt를 돌면서 동일한 파일을 갖고 있는 페이지들을 모두 프리해줌
 	struct thread *t = thread_current();
 	struct page *page = spt_find_page(&t->spt, addr);
@@ -167,5 +166,4 @@ do_munmap (void *addr) {
 		hash_delete(&t->spt.pages, &p->hash_elem);
 		// free(p);
 	}
-
 }

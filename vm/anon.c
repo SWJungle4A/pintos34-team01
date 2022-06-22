@@ -75,7 +75,6 @@ anon_swap_out (struct page *page) {
 
 	/* 비트맵을 처음부터 순회해 false 값을 가진 비트를 하나 찾는다.
 	   즉, 페이지를 할당받을 수 있는 swap slot을 하나 찾는다. */
-	
 	lock_acquire(&bitmap_lock);
 	size_t empty_slot = bitmap_scan_and_flip(swap_table, 0, 1, false);
 	lock_release(&bitmap_lock);

@@ -115,7 +115,6 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 	{
 		return true;
 	}
-
 	return false;
 }
 
@@ -125,11 +124,11 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 }
 
 /* Get the struct frame, that will be evicted. */
+/* 프레임테이블을 순회하며 희생자 페이지를 고르는 함수 */
 static struct frame *
 vm_get_victim(void)
 {
-	// printf("\nvm_get_victim() entry\n");
-
+	// 희생자 페이지를 결정하는 동안, 다른 프로세스에서도 희생자 페이지를 고르면 안되기 때문에 lock을 걸어줌
 	lock_acquire(&frame_lock);
 	struct frame *victim = NULL;
 	/* TODO: The policy for eviction is up to you. */
@@ -145,15 +144,16 @@ vm_get_victim(void)
 		
 		bool access = pml4_is_accessed(frame->thread->pml4, frame->page->va);
 
-		if (!access){
+		if (!access){ // access bit가 0이라면 당첨
 			victim = frame;
-			list_remove(&frame->frame_elem);
+			list_remove(&frame->frame_elem); // victim 변수에 담은 뒤, 프레임 테이블에서 제거
 			break;
 		}else{
-			pml4_set_accessed(frame->thread->pml4, frame->page->va, false);
+			pml4_set_accessed(frame->thread->pml4, frame->page->va, false); // 1이라면 0으로 변환해줌
 		}
 		
 	}
+	/* 찾은 희생자 페이지가 없다면 프레임 리스트의 첫번째 녀석을 희생자 페이지로 결정 -> 모든 프레임이 0으로 세팅되었기 때문 */
 	if (victim == NULL){
 		victim = list_entry(list_pop_front(&frame_list), struct frame, frame_elem);
 		
@@ -169,11 +169,9 @@ static struct frame *
 vm_evict_frame(void)
 {
 	// printf("\nvm_evict_frame() entry\n");
-	struct frame *victim UNUSED = vm_get_victim();
+	struct frame *victim UNUSED = vm_get_victim(); // 희생자 프레임 얻기
 	/* TODO: swap out the victim and return the evicted frame. */
-	if (swap_out(victim->page)){
-		// 호출한 곳에서 pml4_clear 혹은 프레임리스트에서 제거 등을 수행?
-		// printf("\nvm_evict_frame() %p end\n", victim);
+	if (swap_out(victim->page)){ // 해당 프레임의 페이즈를 swap out
 		return victim;
 	}
 	// printf("\nvm_evict_frame() fail\n");
@@ -196,12 +194,12 @@ vm_get_frame(void)
 
 	void *kva = palloc_get_page(PAL_USER);
 
-	if (kva == NULL)
+	if (kva == NULL) // 물리 메모리가 가득 찼을 경우 kva == NULL
 	{
 		// printf("\nvm_get_frame() handling entry\n");
-		struct frame* evict_frame = vm_evict_frame();
+		struct frame* evict_frame = vm_evict_frame(); // 메모리가 가득 찼으므로 희생자 페이지를 결정 후
 		if(evict_frame){
-			kva = palloc_get_page(PAL_USER);
+			kva = palloc_get_page(PAL_USER); // 재 할당 요청
 			free(evict_frame);
 			// printf("\nvm_get_frame() handling end \n");
 		}else{
@@ -243,12 +241,6 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 
-	// printf("\nuser rsp:%x", thread_current()->rsp);
-	// printf("\nkern rsp:%x", f->rsp);
-	// printf("\naddr:%x", addr);
-	// printf("\nrange page:%x~%x", pg_round_up(addr), pg_round_down(addr));
-	// printf("\nuser:%d", user);
-	// printf("\nnot_present:%d", not_present);
 	if (not_present)
 	{	
 		page = spt_find_page(spt, addr);
