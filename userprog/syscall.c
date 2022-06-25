@@ -16,6 +16,7 @@
 #include "userprog/process.h"
 #include "threads/synch.h"
 #include "include/vm/vm.h"
+#include "include/vm/file.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);

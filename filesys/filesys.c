@@ -9,12 +9,14 @@
 #include "devices/disk.h"
 
 /* The disk that contains the file system. */
+/* 파일 시스템이 들어있는 디스크 */
 struct disk *filesys_disk;
 
 static void do_format(void);
 
 /* Initializes the file system module.
  * If FORMAT is true, reformats the file system. */
+/* 파일 시스템 모듈을 초기화한다.FORMAT이 참이면 파일 시스템을 다시 포맷한다. */
 void filesys_init(bool format)
 {
 	filesys_disk = disk_get(0, 1);
@@ -43,6 +45,7 @@ void filesys_init(bool format)
 
 /* Shuts down the file system module, writing any unwritten data
  * to disk. */
+/* 파일 시스템 모듈을 종료하고, 기록되지 않은 데이터를 디스크에 쓴다. */
 void filesys_done(void)
 {
 	/* Original FS */
@@ -57,6 +60,10 @@ void filesys_done(void)
  * Returns true if successful, false otherwise.
  * Fails if a file named NAME already exists,
  * or if internal memory allocation fails. */
+
+/* 인자로 전달된 initial_size 크기로 name이라는 파일을 생성한다.
+ * 성공하면 true를 반환하고, 그렇지 않으면 false를 반환한다.
+ * name이라는 이름의 파일이 이미 있거나 내부 메모리 할당이 실패하면 실패한다. */
 bool filesys_create(const char *name, off_t initial_size)
 {
 	disk_sector_t inode_sector = 0;
@@ -74,6 +81,9 @@ bool filesys_create(const char *name, off_t initial_size)
  * otherwise.
  * Fails if no file named NAME exists,
  * or if an internal memory allocation fails. */
+
+/* 지정된 이름의 파일을 연다. 성공하면 새 파일을 반환하고 그렇지 않으면 null포인터를 반환한다. 
+ * name 이라는 이름의 파일이 없거나, 내부 메모리 할당이 실패하면 실패한다. */
 struct file *
 filesys_open(const char *name)
 {
@@ -97,6 +107,10 @@ filesys_open(const char *name)
  * Returns true if successful, false on failure.
  * Fails if no file named NAME exists,
  * or if an internal memory allocation fails. */
+
+/* 인자로 전달된 name이라는 이름을 가진 파일을 삭제한다.
+ * 만약 성공했다면 true를, 실패했다면 false를 반환한다.
+ * 내부 메모리 할당이 실패했다면 fail을 반환한다. */
 bool filesys_remove(const char *name)
 {
 	struct dir *dir = dir_open_root();

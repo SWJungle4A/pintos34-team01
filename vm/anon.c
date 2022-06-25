@@ -27,7 +27,6 @@ static const struct page_operations anon_ops = {
 /* Initialize the data for anonymous pages */
 void
 vm_anon_init (void) {
-	/* 필요에 따라 수정 가능한 함수 - 아직까지 수정 안 함. */
 	/* TODO: Set up the swap_disk. */
 	lock_init(&bitmap_lock);
 	swap_disk = disk_get(1,1); // 디스크에 스왑 공간을 생성
@@ -42,7 +41,7 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	page->operations = &anon_ops;
 	/* 필요에 따라 수정 가능한 함수 - 일단 true를 반환하도록 수정함. */
 	struct anon_page *anon_page = &page->anon;
-	// anon_page->type = type;
+
 	anon_page->slot_number = 0;
 
 	return true;
@@ -51,7 +50,6 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
-	// printf("\n-----------swap_in_entry------------\n");
 	struct anon_page *anon_page = &page->anon;
 	lock_acquire(&bitmap_lock);
 	size_t swap_slot = anon_page->slot_number;
@@ -62,7 +60,7 @@ anon_swap_in (struct page *page, void *kva) {
 
 	bitmap_set(swap_table, swap_slot, false);
 	lock_release(&bitmap_lock);
-	// printf("\n-----------swap_in_end------------\n");
+
 	return true;
 }
 
@@ -79,20 +77,15 @@ anon_swap_out (struct page *page) {
 	lock_acquire(&bitmap_lock);
 	size_t empty_slot = bitmap_scan_and_flip(swap_table, 0, 1, false);
 	lock_release(&bitmap_lock);
-	// printf("\nbitmap size:%d\n", bitmap_size(&swap_table));
-	// printf("\n-----------swap_out_mid1 empty_slot:%d------------\n",(long)empty_slot);
 
 	for(int i = 0; i < SECTORS_PER_PAGE; i++){
 		disk_write(swap_disk, (empty_slot * SECTORS_PER_PAGE) + i, page->frame->kva + (DISK_SECTOR_SIZE*i));
 	}
 
-	// printf("\n-----------swap_out_mid2------------\n");
 	anon_page->slot_number = empty_slot;
 	palloc_free_page(page->frame->kva);
     pml4_clear_page(t->pml4, page->va);
     page->frame = NULL;
-
-	// printf("\n-----------swap_out_end------------\n");
 
 	return true;
 }

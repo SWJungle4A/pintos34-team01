@@ -1,6 +1,6 @@
 #ifndef USERPROG_PROCESS_H
 #define USERPROG_PROCESS_H
-
+#include "include/filesys/off_t.h"
 #include "threads/thread.h"
 struct aux_data{
     struct file* file;

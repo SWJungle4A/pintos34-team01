@@ -128,13 +128,9 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 static struct frame *
 vm_get_victim(void)
 {
-	// printf("\nvm_get_victim() entry\n");
-
 	lock_acquire(&frame_lock);
 	struct frame *victim = NULL;
 	/* TODO: The policy for eviction is up to you. */
-	// clock 알고리즘. 
-	
 	struct list_elem *elem;
 	struct frame *frame;
 
@@ -156,10 +152,8 @@ vm_get_victim(void)
 	}
 	if (victim == NULL){
 		victim = list_entry(list_pop_front(&frame_list), struct frame, frame_elem);
-		
 	}
 	lock_release(&frame_lock);
-	// printf("\nvm_get_victim() end %p\n", victim);
 	return victim;
 }
 
@@ -168,15 +162,11 @@ vm_get_victim(void)
 static struct frame *
 vm_evict_frame(void)
 {
-	// printf("\nvm_evict_frame() entry\n");
 	struct frame *victim UNUSED = vm_get_victim();
 	/* TODO: swap out the victim and return the evicted frame. */
 	if (swap_out(victim->page)){
-		// 호출한 곳에서 pml4_clear 혹은 프레임리스트에서 제거 등을 수행?
-		// printf("\nvm_evict_frame() %p end\n", victim);
 		return victim;
 	}
-	// printf("\nvm_evict_frame() fail\n");
 	return NULL;
 }
 
@@ -198,16 +188,13 @@ vm_get_frame(void)
 
 	if (kva == NULL)
 	{
-		// printf("\nvm_get_frame() handling entry\n");
 		struct frame* evict_frame = vm_evict_frame();
 		if(evict_frame){
 			kva = palloc_get_page(PAL_USER);
 			free(evict_frame);
-			// printf("\nvm_get_frame() handling end \n");
 		}else{
-			// PANIC("vm_evict_frame() = NULL");
+			PANIC("vm_evict_frame() = NULL");
 		}
-		
 	}
 
 	frame->thread = thread_current();
@@ -243,12 +230,6 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 
-	// printf("\nuser rsp:%x", thread_current()->rsp);
-	// printf("\nkern rsp:%x", f->rsp);
-	// printf("\naddr:%x", addr);
-	// printf("\nrange page:%x~%x", pg_round_up(addr), pg_round_down(addr));
-	// printf("\nuser:%d", user);
-	// printf("\nnot_present:%d", not_present);
 	if (not_present)
 	{	
 		page = spt_find_page(spt, addr);
@@ -366,7 +347,6 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 
-	// pml4 is dirty / set dirty  활용?
 	hash_destroy(&spt->pages, page_destructor);
 }
 
