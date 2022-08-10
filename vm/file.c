@@ -82,16 +82,20 @@ file_backed_destroy (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
     struct thread *t = thread_current();
 
-    if (pml4_is_dirty(t->pml4, page->va)){
+    if (page->frame != NULL) 
+    {
+        if (pml4_is_dirty(t->pml4, page->va)){
 			file_write_at(file_page->file, page->frame->kva, page->file.read_bytes, page->file.ofs);
             pml4_set_dirty(t->pml4, page->va, false);
-    }
+            }
 
-    lock_acquire(&frame_lock);
-    list_remove(&page->frame->frame_elem);
-    lock_release(&frame_lock);
+        lock_acquire(&frame_lock);
+        list_remove(&page->frame->frame_elem);
+        lock_release(&frame_lock);
+        file_close(page->file.file);
 
-    free(page->frame);
+        free(page->frame);
+        }
 }
 
 /* Do the mmap */
@@ -164,7 +168,6 @@ do_munmap (void *addr) {
 		}
 
 		hash_delete(&t->spt.pages, &p->hash_elem);
-		// free(p);
 	}
 
 }

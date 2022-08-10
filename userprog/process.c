@@ -401,6 +401,7 @@ int process_wait(tid_t child_tid UNUSED)
 
 	if (!child)
 		return -1;
+	printf("parent process sema_up\n\n");
 
 	/* 자식 프로세스가 종료할때 까지 대기 */
 	sema_down(&child->wait_sema);
@@ -408,9 +409,12 @@ int process_wait(tid_t child_tid UNUSED)
 	/* 자식으로부터 종료인자를 전달 받고 리스트에서 삭제 */
 	int exit_status = child->exit_status;
 	list_remove(&child->child_elem);
+	printf("parent process sema_up\n\n");
 
 	/* 자식 프로세스 종료 상태인자 받은 후 자식 프로세스 종료하게 함 */
 	sema_up(&child->free_sema);
+
+	printf("parent process sema_up\n\n");
 
 	return exit_status;
 }
@@ -423,6 +427,7 @@ void process_exit(void)
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+	printf("entered process exit\n\n");
 
 	// 프로세스 종료가 일어날 경우 열려있는 모든 파일을 닫음
 	for (int i = 0; i < FDCOUNT_LIMIT; i++)
@@ -441,9 +446,12 @@ void process_exit(void)
 
 	/* 부모 프로세스가 자식 프로세스의 종료상태 확인하게 함 */
 	sema_up(&curr->wait_sema);
+	printf("entered process exit\n\n");
 
 	/* 부모 프로세스가 자식 프로세스 종료인자 받을때 까지 대기 */
 	sema_down(&curr->free_sema);
+	printf("entered process exit\n\n");
+
 }
 
 /* Free the current process's resources. */

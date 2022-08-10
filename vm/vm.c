@@ -205,7 +205,7 @@ vm_get_frame(void)
 			free(evict_frame);
 			// printf("\nvm_get_frame() handling end \n");
 		}else{
-			// PANIC("vm_evict_frame() = NULL");
+			PANIC("vm_evict_frame() = NULL");
 		}
 		
 	}
@@ -350,6 +350,7 @@ bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
 				return false;
 			}
 			struct page *page = spt_find_page(dst, va);
+			page->file.file = file_reopen(p->file.file);
 			memcpy(page->frame->kva, p->frame->kva, PGSIZE);
 			break;
 		default:

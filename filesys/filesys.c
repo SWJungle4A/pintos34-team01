@@ -7,6 +7,7 @@
 #include "filesys/inode.h"
 #include "filesys/directory.h"
 #include "devices/disk.h"
+#include "filesys/fat.h"
 
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
@@ -18,6 +19,7 @@ static void do_format(void);
 void filesys_init(bool format)
 {
 	filesys_disk = disk_get(0, 1);
+
 	if (filesys_disk == NULL)
 		PANIC("hd0:1 (hdb) not present, file system initialization failed");
 
@@ -59,11 +61,18 @@ void filesys_done(void)
  * or if internal memory allocation fails. */
 bool filesys_create(const char *name, off_t initial_size)
 {
-	disk_sector_t inode_sector = 0;
 	struct dir *dir = dir_open_root();
-	bool success = (dir != NULL && free_map_allocate(1, &inode_sector) && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));
+
+	disk_sector_t inode_sector;
+	inode_sector = cluster_to_sector(fat_create_chain(0));
+	// printf("\n\ninode_sector:%d,%d\n\n", inode_sector, sector_to_cluster(inode_sector));
+	bool success = (dir != NULL && inode_sector && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));
+	// printf("\n\nfilesys_success:%d\n\n", success);
+
 	if (!success && inode_sector != 0)
-		free_map_release(inode_sector, 1);
+		fat_put(sector_to_cluster(inode_sector), 0);
+
+
 	dir_close(dir);
 
 	return success;
@@ -79,11 +88,11 @@ filesys_open(const char *name)
 {
 	struct dir *dir = dir_open_root(); // 루트 디렉토리 오픈
 	struct inode *inode = NULL;
-
+	// printf("\n\nfilesys_open dir:%p\n\n", dir);
 	if (dir != NULL)
 		dir_lookup(dir, name, &inode); // 해당 dir에 해당되는 name에 해당되는 inode에 저장
 	dir_close(dir);					   // 디렉토리는 쓰고 닫아야 함
-
+	// printf("\n\nfilesys_open:%p\n\n", inode);
 	return file_open(inode);		   // 해당 inode로 연 파일 객체를 리턴
 
 	/* inode란? 리눅스 시스템에서, 파일 시스템을 처리할 때, 리눅스 전용 특수한 인덱스를 아이노드라고 한다. 

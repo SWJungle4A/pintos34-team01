@@ -47,6 +47,7 @@ uninit_initialize (struct page *page, void *kva) {
 	struct uninit_page *uninit = &page->uninit;
 	/* Fetch first, page_initialize may overwrite the values */
 	vm_initializer *init = uninit->init;
+
 	void *aux = uninit->aux;
 	/* 설계에 따라 수정이 필요한 함수 - 아직 수정된 부분 없음. */
 	/* TODO: You may need to fix this function. */

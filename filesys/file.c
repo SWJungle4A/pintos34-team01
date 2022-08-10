@@ -106,6 +106,7 @@ off_t file_write(struct file *file, const void *buffer, off_t size)
 {
 	off_t bytes_written = inode_write_at(file->inode, buffer, size, file->pos);
 	file->pos += bytes_written;
+	// printf("file_write: %d\n\n", bytes_written);
 	return bytes_written;
 }
 
@@ -119,6 +120,7 @@ off_t file_write(struct file *file, const void *buffer, off_t size)
 off_t file_write_at(struct file *file, const void *buffer, off_t size,
 					off_t file_ofs)
 {
+	// printf("file_write_at entered\n\n");
 	return inode_write_at(file->inode, buffer, size, file_ofs);
 }
 

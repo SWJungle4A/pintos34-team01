@@ -107,14 +107,14 @@ struct thread
 	int nice;		/* 우선순위에 영향을 주는 값 */
 	int recent_cpu; /* 최근에 얼마나 많은 CPU time을 사용했는가를 표현 */
 
-// #ifdef USERPROG
+#ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4; /* Page map level 4 */
-// #endif
-// #ifdef VM
+#endif
+#ifdef VM
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
-// #endif
+#endif
 
 	/* Owned by thread.c. */
 	struct intr_frame tf; /* Information for switching */
